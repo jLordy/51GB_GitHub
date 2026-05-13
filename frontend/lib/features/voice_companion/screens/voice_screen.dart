@@ -17,7 +17,7 @@ class VoiceScreen extends ConsumerWidget {
     final transcript = state.liveTranscript;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Main content — no backdrop, floats over the underlying screen
@@ -90,7 +90,7 @@ class VoiceScreen extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
-                      'Tap the orb to stop',
+                      'Tap the orb when done speaking',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.45),
                         fontSize: 12,

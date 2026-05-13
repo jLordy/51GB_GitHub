@@ -11,14 +11,6 @@ class SpeechService {
 
   bool get isListening => _isListening;
 
-  void _emitDoneIfListening() {
-    if (!_isListening) return;
-    _isListening = false;
-    final text = _lastWords;
-    _lastWords = '';
-    _onDoneCallback?.call(text);
-  }
-
   Future<bool> init() async {
     _isInitialized = await _stt.initialize(
       onError: (error) {
@@ -28,14 +20,9 @@ class SpeechService {
         _onDoneCallback?.call('');
       },
       onStatus: (status) {
-        // 'notListening' alone often fires immediately on Android with no speech —
-        // ignore unless we already have transcribed text (end-of-utterance case).
-        if (status == 'done') {
-          _emitDoneIfListening();
-        } else if (status == 'notListening' &&
-            _lastWords.trim().isNotEmpty) {
-          _emitDoneIfListening();
-        }
+        // Orb-tap is the only submission trigger.
+        // Status events (done, notListening) do NOT auto-submit — they caused
+        // premature replies and double-listen bugs on Android.
       },
     );
     return _isInitialized;
@@ -65,17 +52,23 @@ class SpeechService {
         _lastWords = result.recognizedWords;
         _onResultCallback?.call(result.recognizedWords);
       },
-      listenFor: const Duration(seconds: 60),
-      pauseFor: const Duration(seconds: 5),
+      listenFor: const Duration(seconds: 120),
+      pauseFor: const Duration(seconds: 120),
       localeId: 'en_PH',
     );
   }
 
+  /// Called when the user taps the orb. Fires [_onDoneCallback] with whatever
+  /// was captured, then stops the STT engine.
   Future<void> stopListening() async {
     if (!_isListening) return;
     _isListening = false;
+    final text = _lastWords;
     _lastWords = '';
+    final cb = _onDoneCallback;
     _onDoneCallback = null;
+    _onResultCallback = null;
+    cb?.call(text); // fires _onSpeechDone in controller
     await _stt.stop();
   }
 

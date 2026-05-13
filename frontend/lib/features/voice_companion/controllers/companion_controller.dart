@@ -157,14 +157,8 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
       _tts.stop();
       _startListening();
     } else if (state.orbState == CompanionState.listening) {
-      final captured = state.liveTranscript.trim();
+      // stopListening fires _onSpeechDone via callback — orb-tap is the submit
       _speech.stopListening();
-      if (captured.isNotEmpty) {
-        // Force reply with whatever was captured instead of going idle
-        _onSpeechDone(captured);
-      } else {
-        state = state.copyWith(orbState: CompanionState.idle, liveTranscript: '');
-      }
     }
   }
 
