@@ -42,10 +42,20 @@ from src.schemas.auth_schemas import (
 from src.schemas.patient_schemas import PatientSelfRegisterPayload, PatientResponse
 from src.routers.journal import router as journal_router
 from src.routers.reports import router as reports_router
+from src.routers.calendar import router as calendar_router
+from src.routers.call import router as call_router
+from src.routers.chat import router as chat_router
+from src.routers.connections import router as connections_router
+from src.routers.files import router as files_router
 
 router = APIRouter(prefix="/api", tags=["api"])
 router.include_router(journal_router)
 router.include_router(reports_router)
+router.include_router(calendar_router)
+router.include_router(call_router)
+router.include_router(chat_router)
+router.include_router(connections_router)
+router.include_router(files_router)
 
 db = get_firestore_client()
 logger = logging.getLogger(__name__)

@@ -1,6 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/features/file/presentation/screens/documents_screen.dart';
+import 'package:frontend/features/file/presentation/screens/folder_documents_screen.dart';
+import 'package:frontend/features/file/presentation/screens/pdf_viewer_screen.dart';
+import 'package:frontend/features/journal/presentation/screens/monitoring_screen.dart';
+import 'package:frontend/features/report/presentation/screens/report_screen.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:frontend/features/auth/controller/auth_provider.dart';
@@ -11,6 +16,7 @@ import 'package:frontend/features/auth/presentation/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentation/screens/register_screen.dart';
 import 'package:frontend/features/auth/presentation/screens/role_selection_screen.dart';
 import 'package:frontend/features/journal/presentation/screens/journal_screen.dart';
+import 'package:frontend/features/onboarding/presentation/screens/onboarding_screen.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -126,11 +132,58 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RoleSelectionScreen(),
       ),
 
+      /// 🧭 Onboarding
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+
       /// 📓 Journal
       GoRoute(
         path: '/journal',
         builder: (context, state) => const JournalScreen(),
       ),
+
+      /// 📓 Monitoring
+      GoRoute(
+        path: '/monitoring',
+        builder: (context, state) => const MonitoringScreen(),
+      ),
+
+      GoRoute(
+        path: '/report',
+        builder: (context, state) => const ReportScreen(),
+      ),
+      GoRoute(
+        path: '/documents',
+        builder: (context, state) => const DocumentsScreen(),
+        routes: [
+          GoRoute(
+            path: ':folderId',
+            builder: (context, state) {
+              final folderId = state.pathParameters['folderId']!;
+              final extra = (state.extra as Map?)?.cast<String, String?>() ?? {};
+              return FolderDocumentsScreen(
+                folderId: folderId,
+                folderName: extra['name'] ?? '',
+                patientUid: extra['patientUid'],
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'view',
+                builder: (context, state) => PdfViewerScreen(
+                  fileUrl: state.uri.queryParameters['url'] ?? '',
+                  fileName: state.uri.queryParameters['name'] ?? '',
+                  fileType: state.uri.queryParameters['type'] ?? '',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      
     ],
   );
 });

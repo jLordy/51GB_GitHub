@@ -1,2 +1,4 @@
 .env
 fapivenv/
+backend/*-firebase-adminsdk-*.json
+
