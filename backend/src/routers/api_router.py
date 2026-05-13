@@ -39,8 +39,13 @@ from src.schemas.auth_schemas import (
     VerifyRegisterEmailOtpRequest,
     VerifyOtpRequest,
 )
+from src.schemas.patient_schemas import PatientSelfRegisterPayload, PatientResponse
+from src.routers.journal import router as journal_router
+from src.routers.reports import router as reports_router
 
 router = APIRouter(prefix="/api", tags=["api"])
+router.include_router(journal_router)
+router.include_router(reports_router)
 
 db = get_firestore_client()
 logger = logging.getLogger(__name__)
@@ -510,6 +515,73 @@ def self_select_role(
         date_of_birth=extra.get("date_of_birth"),
         is_private=extra.get("is_private", False),
         notifications_enabled=extra.get("notifications_enabled", True),
+    )
+
+
+# ─────────────────────────────── Patient self-registration ────────────────────
+
+@router.post("/patients/self-register", response_model=PatientResponse, status_code=status.HTTP_201_CREATED)
+def patient_self_register(
+    payload: PatientSelfRegisterPayload,
+    current_user: CurrentUser = Depends(get_authenticated_user),
+) -> PatientResponse:
+    """
+    Called at the end of the patient onboarding wizard.
+    Creates the patient record in Firestore and marks the user as active.
+    Only callable when role == "patient" and status == "onboarding".
+    """
+    if current_user.role.lower() != "patient":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only patients can call this endpoint.",
+        )
+    if current_user.status.lower() != "onboarding":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Patient profile already set up.",
+        )
+
+    existing = (
+        db.collection("patients")
+        .where(filter=FieldFilter("user_uid", "==", current_user.uid))
+        .limit(1)
+        .get()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Patient record already exists.",
+        )
+
+    now = datetime.now(timezone.utc)
+    doc_data = {
+        "user_uid": current_user.uid,
+        "full_name": payload.full_name,
+        "date_of_birth": payload.date_of_birth.isoformat(),
+        "illness_type": payload.illness_type,
+        "illness_other": payload.illness_other,
+        "notes": payload.notes,
+        "assigned_doctor_uid": None,
+        "intake_profile": payload.intake_profile.model_dump() if payload.intake_profile else None,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    _, doc_ref = db.collection("patients").add(doc_data)
+    db.collection("users").document(current_user.uid).update({"status": "active"})
+
+    return PatientResponse(
+        patient_id=doc_ref.id,
+        user_uid=current_user.uid,
+        full_name=payload.full_name,
+        date_of_birth=payload.date_of_birth,
+        illness_type=payload.illness_type,
+        illness_other=payload.illness_other,
+        assigned_doctor_uid=None,
+        notes=payload.notes,
+        intake_profile=doc_data["intake_profile"],
+        created_at=now,
+        updated_at=now,
     )
 
 

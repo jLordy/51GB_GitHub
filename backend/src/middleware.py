@@ -29,7 +29,7 @@ class CurrentUser:
 def _token_to_current_user(token: str, *, allow_anonymous: bool) -> CurrentUser:
     """Verify a Firebase ID token and load role/status from Firestore."""
     try:
-        decoded = firebase_auth.verify_id_token(token, check_revoked=True)
+        decoded = firebase_auth.verify_id_token(token, check_revoked=True, clock_skew_seconds=10)
     except firebase_auth.RevokedIdTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
