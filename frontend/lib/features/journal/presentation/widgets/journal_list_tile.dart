@@ -171,7 +171,6 @@ class JournalListTile extends StatelessWidget {
                       onTap();
                     case _TileMenuAction.delete:
                       onDelete();
-                      // TODO: Handle this case.
                       throw UnimplementedError();
                   }
                 },
