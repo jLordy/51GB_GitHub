@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "546603438794",
+    "project_id": "agapay-hackathon",
+    "storage_bucket": "agapay-hackathon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:546603438794:android:c0d681334a4e0425ca9a33",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV2FHp86L0JG39celmlCtwiAnqxuFWnr4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
