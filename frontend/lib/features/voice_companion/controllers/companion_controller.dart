@@ -143,7 +143,7 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
       liveTranscript: '',
     );
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (_disposed) return;
       _speak(generateResponse(transcript));
     });
@@ -157,8 +157,14 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
       _tts.stop();
       _startListening();
     } else if (state.orbState == CompanionState.listening) {
+      final captured = state.liveTranscript.trim();
       _speech.stopListening();
-      state = state.copyWith(orbState: CompanionState.idle, liveTranscript: '');
+      if (captured.isNotEmpty) {
+        // Force reply with whatever was captured instead of going idle
+        _onSpeechDone(captured);
+      } else {
+        state = state.copyWith(orbState: CompanionState.idle, liveTranscript: '');
+      }
     }
   }
 
@@ -268,6 +274,41 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
     }
     if (_containsAny(lower, ['love', 'mahal', 'miss', 'nami-miss'])) {
       return 'Ang ganda ng pakiramdam na mahal at napapahalagahan. Ikwento mo pa sa akin!';
+    }
+
+    // ── Health-specific responses ──────────────────────────────────────────
+    if (_containsAny(lower, ['bp', 'blood pressure', 'presyon', 'hypertension', 'mataas ang dugo', 'mababa ang dugo'])) {
+      return 'Kumusta ang iyong blood pressure ngayon? Importante mag-monitor ng regular, lalo na kung may history ka.';
+    }
+    if (_containsAny(lower, ['ubo', 'cough', 'sipon', 'cold', 'baradong ilong', 'nagsisingasing'])) {
+      return 'Nag-aalala ako sa\'yo. Nagpapahinga ka ba ng maayos at umiinom ng maraming tubig?';
+    }
+    if (_containsAny(lower, ['lagnat', 'fever', 'mainit ang katawan', 'nilalagnat', 'temperature'])) {
+      return 'Lagnat ka? Mag-ingat — uminom ng tubig, magpahinga, at kung hindi bumaba kumonsulta sa doktor.';
+    }
+    if (_containsAny(lower, ['puso', 'heart', 'palpitation', 'kabog ng dibdib', 'cardiac', 'tibok'])) {
+      return 'Ang kalusugan ng puso ay napakahalaga. Naka-consult ka na ba sa iyong doktor tungkol dito?';
+    }
+    if (_containsAny(lower, ['diabetes', 'asukal', 'sugar', 'glucose', 'diabetic', 'blood sugar'])) {
+      return 'Importante ang pag-monitor ng blood sugar araw-araw. Kumain ka na ba ngayon at nag-check ka na ng glucose mo?';
+    }
+    if (_containsAny(lower, ['checkup', 'check up', 'doktor', 'doctor', 'hospital', 'klinika', 'ospital', 'konsulta'])) {
+      return 'Magandang ideya ang mag-checkup regularly. May appointment ka na ba o kailangan mo ng tulong?';
+    }
+    if (_containsAny(lower, ['tulog', 'sleep', 'hindi makatulog', 'insomnia', 'gising', 'hindi nakatulog'])) {
+      return 'Ang pahinga ay kasing halaga ng gamot. Ilang oras ka natutulog ngayon? Okay ka lang ba?';
+    }
+    if (_containsAny(lower, ['gamot', 'medicine', 'medication', 'tablet', 'vitamins', 'vitaminas', 'inumin'])) {
+      return 'Huwag kalimutang uminom ng gamot sa tamang oras. Kumpleto ka ba sa gamot mo ngayon?';
+    }
+    if (_containsAny(lower, ['kumain', 'kain', 'eat', 'gutom', 'hungry', 'pagkain', 'food', 'diet'])) {
+      return 'Mahalaga ang tamang pagkain para sa kalusugan. Kumain ka na ba ng maayos ngayon?';
+    }
+    if (_containsAny(lower, ['ehersisyo', 'exercise', 'gym', 'lakad', 'walk', 'jogging', 'aktibo'])) {
+      return 'Maganda yan! Regular na ehersisyo ay nakatutulong sa kalusugan ng puso at isip. Gaano ka kadalas?';
+    }
+    if (_containsAny(lower, ['alak', 'alcohol', 'sigarilyo', 'smoke', 'cigarette', 'yosi'])) {
+      return 'Naiintindihan kita. Kung kaya, subukan mong bawasan — malaking bagay yan para sa iyong kalusugan.';
     }
 
     // Temporary universal acknowledgement until backend API replaces this.

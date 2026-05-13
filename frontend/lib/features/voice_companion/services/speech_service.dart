@@ -22,6 +22,7 @@ class SpeechService {
   Future<bool> init() async {
     _isInitialized = await _stt.initialize(
       onError: (error) {
+        if (!_isListening) return;
         _isListening = false;
         _lastWords = '';
         _onDoneCallback?.call('');
@@ -52,6 +53,8 @@ class SpeechService {
       }
     }
 
+    if (_isListening) return;
+
     _lastWords = '';
     _onResultCallback = onResult;
     _onDoneCallback = onDone;
@@ -62,8 +65,8 @@ class SpeechService {
         _lastWords = result.recognizedWords;
         _onResultCallback?.call(result.recognizedWords);
       },
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 5),
       localeId: 'en_PH',
     );
   }
