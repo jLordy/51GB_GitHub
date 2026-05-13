@@ -1,6 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/features/calendar/presentation/screens/doctor_calendar_screen.dart';
+import 'package:frontend/features/calendar/presentation/screens/patient_calendar_screen.dart';
+import 'package:frontend/features/notifications/presentation/screen/notification_screen.dart';
+import 'package:frontend/features/dashboard/presentation/screens/doctor_home_screen.dart';
+import 'package:frontend/features/dashboard/presentation/screens/home_screen.dart';
+import 'package:frontend/features/dashboard/presentation/screens/patients_screen.dart';
+import 'package:frontend/features/connections/presentation/screens/connections_screen.dart';
+import 'package:frontend/features/settings/presentation/screens/account_security_screen.dart';
+import 'package:frontend/features/settings/presentation/screens/change_theme_screen.dart';
+import 'package:frontend/features/settings/presentation/screens/delete_account_screen.dart';
+import 'package:frontend/features/settings/presentation/screens/private_account_screen.dart';
+import 'package:frontend/features/settings/presentation/screens/profile_settings_screen.dart';
+import 'package:frontend/features/settings/presentation/screens/settings_screen.dart';
+import 'package:frontend/features/journal/presentation/screens/patient_journal_folder_screen.dart';
 import 'package:frontend/features/file/presentation/screens/documents_screen.dart';
 import 'package:frontend/features/file/presentation/screens/folder_documents_screen.dart';
 import 'package:frontend/features/file/presentation/screens/pdf_viewer_screen.dart';
@@ -72,11 +86,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/role-selection';
       }
 
+      final role = currentUser?.role.toLowerCase() ?? '';
+      final isDoctor = role == 'doctor' || role == 'secretary';
+      final defaultHome = isDoctor ? '/doctor-dashboard' : '/home';
+
       if (isAuthenticated && !isPending && isRoleSelectionPage) {
-        return '/journal';
+        return defaultHome;
       }
 
-      if (isAuthenticated && isAuthPage) return '/journal';
+      if (isAuthenticated && isAuthPage) return defaultHome;
+
+      // Guard: doctor/secretary landed on patient home (race on role load)
+      if (isAuthenticated && !isPending && isDoctor && location == '/home') {
+        return '/doctor-dashboard';
+      }
+      // Guard: patient/caregiver landed on doctor dashboard
+      if (isAuthenticated && !isPending && !isDoctor && location == '/doctor-dashboard') {
+        return '/home';
+      }
 
       return null;
     },
@@ -150,6 +177,62 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MonitoringScreen(),
       ),
 
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/doctor-dashboard',
+        builder: (context, state) => const DoctorHomeScreen(),
+      ),
+      GoRoute(
+        path: '/patients',
+        builder: (context, state) => const PatientsScreen(),
+      ),
+      GoRoute(
+        path: '/connections',
+        builder: (context, state) => const ConnectionsScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/profile',
+        builder: (context, state) => const ProfileSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/account-security',
+        builder: (context, state) => const AccountSecurityScreen(),
+      ),
+      GoRoute(
+        path: '/settings/theme',
+        builder: (context, state) => const ChangeThemeScreen(),
+      ),
+      GoRoute(
+        path: '/settings/privacy',
+        builder: (context, state) => const PrivateAccountScreen(),
+      ),
+      GoRoute(
+        path: '/settings/delete-account',
+        builder: (context, state) => const DeleteAccountScreen(),
+      ),
+      GoRoute(
+        path: '/patients-journal',
+        builder: (context, state) => const PatientJournalFolderScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationScreen(),
+      ),
+      GoRoute(
+        path: '/calendar',
+        builder: (context, state) {
+          final role = ref.read(currentUserProvider)?.role.toLowerCase() ?? '';
+          final isDoctor = role == 'doctor' || role == 'secretary';
+          return isDoctor ? const DoctorCalendarScreen() : const PatientCalendarScreen();
+        },
+      ),
       GoRoute(
         path: '/report',
         builder: (context, state) => const ReportScreen(),

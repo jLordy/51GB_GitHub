@@ -9,6 +9,7 @@ import 'package:frontend/features/journal/presentation/widgets/monitoring_summar
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 enum _Phase { intro, loading, question, summary, submitting, noProfile }
 
@@ -377,7 +378,7 @@ class _MonitoringScreenState extends ConsumerState<MonitoringScreen> {
         onAnswerChanged: _onAnswerChanged,
         onPrev: _prev,
         onNext: _next,
-        onClose: () => Navigator.of(context).pop(),
+        onClose: () => context.go('/journal'),
       ),
       _Phase.summary => MonitoringSummaryPage(
         questions: visibleQuestions,

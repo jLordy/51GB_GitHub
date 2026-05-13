@@ -168,7 +168,7 @@ class JournalEntriesList extends StatelessWidget {
   final List<JournalEntryModel> entries;
   final void Function(JournalEntryModel) onTapEntry;
   final void Function(JournalEntryModel) onDeleteEntry;
-  final String Function(JournalEntryModel entry)? previewBuilder;
+  final String? Function(JournalEntryModel entry)? previewBuilder;
   final bool isReadOnly;
 
   @override

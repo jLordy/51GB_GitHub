@@ -1,6 +1,78 @@
 import 'package:frontend/features/journal/model/journal_entry_model.dart';
 import 'package:flutter/material.dart';
 
+// ── Skeleton shimmer ───────────────────────────────────────────────────────────
+
+class _PreviewSkeleton extends StatefulWidget {
+  const _PreviewSkeleton();
+
+  @override
+  State<_PreviewSkeleton> createState() => _PreviewSkeletonState();
+}
+
+class _PreviewSkeletonState extends State<_PreviewSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).colorScheme.onSurface;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, _) {
+        final color = base.withValues(alpha: 0.08 + _anim.value * 0.08);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _SkeletonLine(color: color, widthFactor: 0.85),
+            const SizedBox(height: 6),
+            _SkeletonLine(color: color, widthFactor: 0.70),
+            const SizedBox(height: 6),
+            _SkeletonLine(color: color, widthFactor: 0.55),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.color, required this.widthFactor});
+  final Color color;
+  final double widthFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: Container(
+        height: 11,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Menu actions ───────────────────────────────────────────────────────────────
 
 enum _TileMenuAction { edit, delete }
@@ -136,16 +208,18 @@ class JournalListTile extends StatelessWidget {
                   const SizedBox(width: 12),
                   // ── Preview ───────────────────────────────────────────
                   Expanded(
-                    child: Text(
-                      previewText ?? entry.buildPreview(maxLines: 3),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        color: cs.onSurface.withValues(alpha: 0.85),
-                        height: 1.55,
-                      ),
-                    ),
+                    child: previewText == null
+                        ? const _PreviewSkeleton()
+                        : Text(
+                            previewText!,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              color: cs.onSurface.withValues(alpha: 0.85),
+                              height: 1.55,
+                            ),
+                          ),
                   ),
                 ],
               ),

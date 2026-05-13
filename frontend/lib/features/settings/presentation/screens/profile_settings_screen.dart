@@ -2,9 +2,7 @@ import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:frontend/core/widgets/custom_snackbar.dart';
 import 'package:frontend/features/auth/controller/auth_provider.dart';
-import 'package:frontend/features/auth/model/user_model.dart';
 import 'package:frontend/theme/palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +21,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
 
-  XFile? _pickedImage;
   Uint8List? _pickedImageBytes;
   bool _removePhoto = false;
   bool _isSaving = false;
@@ -81,7 +78,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     if (picked != null && mounted) {
       final bytes = await picked.readAsBytes();
       setState(() {
-        _pickedImage = picked;
         _pickedImageBytes = bytes;
         _removePhoto = false;
       });
@@ -215,7 +211,6 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               Center(
                 child: TextButton(
                   onPressed: () => setState(() {
-                    _pickedImage = null;
                     _pickedImageBytes = null;
                     _removePhoto = true;
                   }),
