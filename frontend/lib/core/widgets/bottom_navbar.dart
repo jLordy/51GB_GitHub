@@ -45,7 +45,7 @@ class BottomNavbar extends ConsumerWidget {
   // ── Route → index maps ───────────────────────────────────────────────────
 
   static int _patientIndex(String path) {
-    if (path == '/community' || path == '/home') return 0;
+    if (path == '/home') return 0;
     if (path.startsWith('/journal') || path.startsWith('/monitoring')) return 1;
     if (path.startsWith('/notifications')) return 2;
     return -1;
@@ -53,22 +53,22 @@ class BottomNavbar extends ConsumerWidget {
 
   static int _doctorIndex(String path) {
     if (path == '/doctor-dashboard') return 0;
-    if (path == '/community' || path == '/home') return 1;
-    if (path.startsWith('/patients')) return 2;
+    if (path == '/patients' || path.startsWith('/patients/')) return 1;
+    if (path.startsWith('/patients-journal')) return 2;
     if (path.startsWith('/notifications')) return 3;
     return -1;
   }
 
   static int _secretaryIndex(String path) {
     if (path == '/doctor-dashboard') return 0;
-    if (path == '/community' || path == '/home') return 1;
-    if (path.startsWith('/patients')) return 2;
+    if (path == '/patients' || path.startsWith('/patients/')) return 1;
+    if (path.startsWith('/patients-journal')) return 2;
     if (path.startsWith('/notifications')) return 3;
     return -1;
   }
 
   static int _caregiverIndex(String path) {
-    if (path == '/community' || path == '/home') return 0;
+    if (path == '/home') return 0;
     if (path.startsWith('/patients')) return 1;
     if (path.startsWith('/notifications')) return 2;
     // index 3 = Assistance (no dedicated route)
@@ -338,7 +338,7 @@ class _PatientItems extends StatelessWidget {
           unselectedColor: unselectedColor,
           onTap: () {
             onHomeTap();
-            context.go('/community');
+            context.go('/home');
           },
         ),
         _NavItem(
@@ -413,7 +413,7 @@ class _DoctorItems extends StatelessWidget {
           isSelected: activeIndex == 1,
           selectedColor: selectedColor,
           unselectedColor: unselectedColor,
-          onTap: () => context.go('/community'),
+          onTap: () => context.go('/patients'),
         ),
         const SizedBox(width: 58),
         _NavItem(
@@ -436,7 +436,7 @@ class _DoctorItems extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Secretary tab row  (Dashboard | Community | [gap] | Patients | Notifications)
+//  Secretary tab row  (Dashboard | Patients | [gap] | Journal | Notifications)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SecretaryItems extends StatelessWidget {
@@ -467,7 +467,7 @@ class _SecretaryItems extends StatelessWidget {
           isSelected: activeIndex == 1,
           selectedColor: selectedColor,
           unselectedColor: unselectedColor,
-          onTap: () => context.go('/community'),
+          onTap: () => context.go('/patients'),
         ),
         const SizedBox(width: 58),
         _NavItem(
@@ -514,7 +514,7 @@ class _CaregiverItems extends StatelessWidget {
           isSelected: activeIndex == 0,
           selectedColor: selectedColor,
           unselectedColor: unselectedColor,
-          onTap: () => context.go('/community'),
+          onTap: () => context.go('/home'),
         ),
         _NavItem(
           icon: Icons.folder_shared_outlined,

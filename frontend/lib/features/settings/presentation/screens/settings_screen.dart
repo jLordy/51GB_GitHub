@@ -95,7 +95,14 @@ class SettingsScreen extends ConsumerWidget {
         ),
         leading: TextButton(
           onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/community'),
+              context.canPop() ? context.pop() : context.go(
+            () {
+              final role = currentUser?.role.toLowerCase() ?? '';
+              return (role == 'doctor' || role == 'secretary')
+                  ? '/doctor-dashboard'
+                  : '/home';
+            }(),
+          ),
           child: Text('Close', style: TextStyle(color: scheme.onSurface)),
         ),
       ),

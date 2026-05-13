@@ -22,10 +22,9 @@ class ChatStreamRepository {
     return _firestore
         .collection('conversations')
         .where('participants', arrayContains: uid)
-        .orderBy('last_message_at', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs.map((doc) {
+        .map((snapshot) {
+          final list = snapshot.docs.map((doc) {
             final data = doc.data();
             if (encryptionKey != null) {
               final raw = data['last_message'];
@@ -34,8 +33,20 @@ class ChatStreamRepository {
               }
             }
             return ConversationModel.fromFirestore(doc.id, data, uid);
-          }).toList(),
-        );
+          }).toList();
+
+          // Sort newest-first (replaces Firestore orderBy that needs a composite index)
+          list.sort((a, b) {
+            final aAt = a.lastMessageAt;
+            final bAt = b.lastMessageAt;
+            if (aAt == null && bAt == null) return 0;
+            if (aAt == null) return 1;
+            if (bAt == null) return -1;
+            return bAt.compareTo(aAt);
+          });
+
+          return list;
+        });
   }
 
   /// Real-time stream of messages in [conversationId], oldest-first.

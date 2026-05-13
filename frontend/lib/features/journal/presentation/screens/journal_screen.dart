@@ -28,12 +28,12 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
   JournalSortOrder _sortOrder = JournalSortOrder.newestFirst;
   DateTime? _dateFilter;
 
-  String _buildPreviewWithQuestions(
+  String? _buildPreviewWithQuestions(
     JournalEntryModel entry,
     List<Question> questions, {
     int maxLines = 3,
   }) {
-    if (questions.isEmpty) return entry.buildPreview(maxLines: maxLines);
+    if (questions.isEmpty) return null;
 
     final b = StringBuffer();
     int count = 0;

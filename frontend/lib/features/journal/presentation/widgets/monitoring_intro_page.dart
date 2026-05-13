@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// The landing / intro scaffold shown before the user starts a monitoring
 /// session. Displays the Nurse Aga mascot, a welcome message, an optional
@@ -38,7 +39,7 @@ class MonitoringIntroPage extends StatelessWidget {
                     size: 26,
                     color: scheme.onSurfaceVariant,
                   ),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => context.go('/journal'),
                 ),
               ),
               const Spacer(),
