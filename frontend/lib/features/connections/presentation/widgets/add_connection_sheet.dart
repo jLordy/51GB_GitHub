@@ -1,5 +1,6 @@
 import 'package:frontend/core/widgets/custom_snackbar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:frontend/features/auth/controller/auth_provider.dart';
 import 'package:frontend/features/auth/model/user_model.dart';
 import 'package:frontend/features/connections/controller/connection_controller.dart';
@@ -22,6 +23,18 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
   // Care-provider side: tracks in-flight accept/decline actions per connectionId
   final Map<String, bool> _actioning = {};
 
+  @override
+  void initState() {
+    super.initState();
+    // Refresh pending requests every time the sheet opens so recipients always
+    // see the latest incoming requests without needing an app restart.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(pendingConnectionsProvider.notifier).refresh();
+      }
+    });
+  }
+
   // ── Patient: send connection request ──────────────────────────────────────
   Future<void> _sendRequest(UserModel user) async {
     setState(() => _sending[user.uid] = true);
@@ -34,14 +47,17 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
           type: SnackBarType.success,
         );
       }
-    } catch (_) {
-      if (mounted) {
-        AppSnackBar.show(
-          context,
-          'Failed to send request. Please try again.',
-          type: SnackBarType.error,
-        );
-      }
+    } catch (e) {
+      if (!mounted) return;
+      final is409 =
+          e is DioException && (e.response?.statusCode == 409);
+      AppSnackBar.show(
+        context,
+        is409
+            ? 'Request already sent — waiting for their response.'
+            : 'Failed to send request. Please try again.',
+        type: is409 ? SnackBarType.info : SnackBarType.error,
+      );
     } finally {
       if (mounted) setState(() => _sending[user.uid] = false);
     }
@@ -628,15 +644,22 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
     );
   }
 
-  // ── Sheet for patients: browse and send requests ───────────────────────────
+  // ── Sheet for patients: tabbed — care team + patients + requests ──────────
   Widget _buildPatientSheet(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+    final myRole = currentUser?.role ?? '';
+    // Secretaries only connect with doctors — keep the simple single-list sheet.
+    if (myRole == 'secretary') return _buildSecretarySheet(context);
+    return _buildPatientTabSheet(context);
+  }
+
+  // ── Secretary: simple doctor-browse sheet ────────────────────────────────
+  Widget _buildSecretarySheet(BuildContext context) {
     final usersAsync = ref.watch(browseUsersProvider);
     final connectionsState = ref.watch(acceptedConnectionsProvider);
     final pendingState = ref.watch(pendingConnectionsProvider);
     final authUser = ref.watch(authStateProvider).asData?.value;
     final currentUid = authUser?.uid ?? '';
-    final currentUser = ref.watch(currentUserProvider);
-    final myRole = currentUser?.role ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final connectedUids = <String>{currentUid};
@@ -665,7 +688,6 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drag handle
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 12, bottom: 4),
@@ -695,9 +717,7 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
             child: Text(
-              myRole == 'secretary'
-                  ? 'Send a connection request to a doctor.'
-                  : 'Send a connection request to a doctor or caregiver.',
+              'Send a connection request to a doctor.',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 color: isDark
@@ -731,17 +751,14 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
               data: (List<UserModel> users) {
                 final available = users
                     .where((u) => !connectedUids.contains(u.uid))
-                    .where(
-                      (u) => myRole == 'secretary' ? u.role == 'doctor' : true,
-                    )
+                    .where((u) => u.role == 'doctor')
                     .toList(growable: false);
-
                 if (available.isEmpty) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32),
                       child: Text(
-                        'No available doctors or caregivers\nto connect with.',
+                        'No available doctors to connect with.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 14,
@@ -753,7 +770,6 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
                     ),
                   );
                 }
-
                 return ListView.separated(
                   shrinkWrap: true,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -762,82 +778,11 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
                   itemBuilder: (context, index) {
                     final user = available[index];
                     final isSending = _sending[user.uid] ?? false;
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 4,
-                      ),
-                      leading: _RoleAvatar(user: user),
-                      title: Text(
-                        user.displayName ?? user.email ?? user.uid,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? Palette.darkOnSurfaceColor
-                              : const Color(0xFF1A1A2E),
-                        ),
-                      ),
-                      subtitle: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: user.role == 'doctor'
-                                  ? (isDark
-                                        ? const Color(0xFF1E2D45)
-                                        : const Color(0xFFEFF6FF))
-                                  : (isDark
-                                        ? const Color(0xFF1A2820)
-                                        : const Color(0xFFF0FDF4)),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              user.role == 'doctor' ? 'Doctor' : 'Caregiver',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: user.role == 'doctor'
-                                    ? const Color(0xFF3B82F6)
-                                    : Palette.greenColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      trailing: isSending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Palette.greenColor,
-                              ),
-                            )
-                          : TextButton(
-                              onPressed: () => _sendRequest(user),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: Palette.greenColor,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                textStyle: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              child: const Text('Connect'),
-                            ),
+                    return _UserListTile(
+                      user: user,
+                      isSending: isSending,
+                      isDark: isDark,
+                      onConnect: () => _sendRequest(user),
                     );
                   },
                 );
@@ -849,8 +794,415 @@ class _AddConnectionSheetState extends ConsumerState<AddConnectionSheet> {
     );
   }
 
+  // ── Patient: 3-tab sheet — care team + patients + requests ────────────────
+  Widget _buildPatientTabSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final usersAsync = ref.watch(browseUsersProvider);
+    final patientPeersAsync = ref.watch(browsePatientsProvider);
+    final pendingAsync = ref.watch(pendingConnectionsProvider);
+    final connectionsState = ref.watch(acceptedConnectionsProvider);
+    final authUser = ref.watch(authStateProvider).asData?.value;
+    final currentUid = authUser?.uid ?? '';
+    final secretariesAsync = ref.watch(browseSecretariesProvider);
+
+    final connectedUids = <String>{currentUid};
+    if (connectionsState.hasValue) {
+      for (final c in connectionsState.value!) {
+        connectedUids.add(c.requesterUid);
+        connectedUids.add(c.recipientUid);
+      }
+    }
+    if (pendingAsync.hasValue) {
+      for (final c in pendingAsync.value!) {
+        connectedUids.add(c.requesterUid);
+        connectedUids.add(c.recipientUid);
+      }
+    }
+
+    return DefaultTabController(
+      length: 3,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Palette.darkSurfaceContainerColor : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Palette.darkOutlineColor
+                      : const Color(0xFFD1D5DB),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              child: Text(
+                'Add to Health Circle',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: isDark
+                      ? Palette.darkOnSurfaceColor
+                      : const Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+            TabBar(
+              labelStyle: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              labelColor: Palette.greenColor,
+              unselectedLabelColor: isDark
+                  ? Palette.darkOnSurfaceVariantColor
+                  : const Color(0xFF6B7280),
+              indicatorColor: Palette.greenColor,
+              indicatorSize: TabBarIndicatorSize.label,
+              tabs: const [
+                Tab(text: 'Care Team'),
+                Tab(text: 'Patients'),
+                Tab(text: 'Requests'),
+              ],
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 380),
+              child: TabBarView(
+                children: [
+                  // ── Tab 1: Browse doctors & caregivers ─────────────────────
+                  usersAsync.when(
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(
+                          color: Palette.greenColor,
+                        ),
+                      ),
+                    ),
+                    error: (_, _) => Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          'Could not load users.',
+                          style: GoogleFonts.inter(
+                            color: isDark
+                                ? Palette.darkOnSurfaceVariantColor
+                                : const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ),
+                    ),
+                    data: (List<UserModel> users) {
+                      final available = users
+                          .where((u) => !connectedUids.contains(u.uid))
+                          .toList(growable: false);
+                      if (available.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text(
+                              'No available doctors or caregivers\nto connect with.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: isDark
+                                    ? Palette.darkOnSurfaceVariantColor
+                                    : const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: available.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final user = available[index];
+                          return _UserListTile(
+                            user: user,
+                            isSending: _sending[user.uid] ?? false,
+                            isDark: isDark,
+                            onConnect: () => _sendRequest(user),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // ── Tab 2: Browse peer patients ────────────────────────────
+                  patientPeersAsync.when(
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(
+                          color: Palette.greenColor,
+                        ),
+                      ),
+                    ),
+                    error: (_, _) => Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Text(
+                          'Could not load patients.',
+                          style: GoogleFonts.inter(
+                            color: isDark
+                                ? Palette.darkOnSurfaceVariantColor
+                                : const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ),
+                    ),
+                    data: (List<UserModel> patients) {
+                      final available = patients
+                          .where((u) => !connectedUids.contains(u.uid))
+                          .toList(growable: false);
+                      if (available.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text(
+                              'No other patients to connect with.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: isDark
+                                    ? Palette.darkOnSurfaceVariantColor
+                                    : const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: available.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final user = available[index];
+                          return _PatientPeerTile(
+                            user: user,
+                            isSending: _sending[user.uid] ?? false,
+                            isDark: isDark,
+                            onConnect: () => _sendRequest(user),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // ── Tab 3: Incoming pending requests ──────────────────────
+                  _buildPendingList(
+                    context,
+                    isDark: isDark,
+                    pendingAsync: pendingAsync,
+                    patientsAsync: patientPeersAsync,
+                    usersAsync: usersAsync,
+                    secretariesAsync: secretariesAsync,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Reusable list tile for doctor/caregiver browse rows
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _UserListTile extends StatelessWidget {
+  const _UserListTile({
+    required this.user,
+    required this.isSending,
+    required this.isDark,
+    required this.onConnect,
+  });
+
+  final UserModel user;
+  final bool isSending;
+  final bool isDark;
+  final VoidCallback onConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      leading: _RoleAvatar(user: user),
+      title: Text(
+        user.displayName ?? user.email ?? user.uid,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Palette.darkOnSurfaceColor : const Color(0xFF1A1A2E),
+        ),
+      ),
+      subtitle: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: user.role == 'doctor'
+                  ? (isDark ? const Color(0xFF1E2D45) : const Color(0xFFEFF6FF))
+                  : (isDark
+                        ? const Color(0xFF1A2820)
+                        : const Color(0xFFF0FDF4)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              user.role == 'doctor' ? 'Doctor' : 'Caregiver',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: user.role == 'doctor'
+                    ? const Color(0xFF3B82F6)
+                    : Palette.greenColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+      trailing: isSending
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Palette.greenColor,
+              ),
+            )
+          : TextButton(
+              onPressed: onConnect,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Palette.greenColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                textStyle: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: const Text('Connect'),
+            ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Reusable list tile for peer patient browse rows
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PatientPeerTile extends StatelessWidget {
+  const _PatientPeerTile({
+    required this.user,
+    required this.isSending,
+    required this.isDark,
+    required this.onConnect,
+  });
+
+  final UserModel user;
+  final bool isSending;
+  final bool isDark;
+  final VoidCallback onConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = user.displayName ?? user.email ?? user.uid;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      leading: _PatientAvatar(name: name),
+      title: Text(
+        name,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Palette.darkOnSurfaceColor : const Color(0xFF1A1A2E),
+        ),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF0D2D2A)
+                  : const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Patient',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF0D9488),
+              ),
+            ),
+          ),
+        ),
+      ),
+      trailing: isSending
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF0D9488),
+              ),
+            )
+          : TextButton(
+              onPressed: onConnect,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: const Color(0xFF0D9488),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                textStyle: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: const Text('Connect'),
+            ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

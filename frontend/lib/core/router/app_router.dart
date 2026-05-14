@@ -33,6 +33,7 @@ import 'package:frontend/features/auth/presentation/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentation/screens/register_screen.dart';
 import 'package:frontend/features/auth/presentation/screens/role_selection_screen.dart';
 import 'package:frontend/features/assistance/presentation/screens/assistance_screen.dart';
+import 'package:frontend/features/lifestyle/presentation/screens/lifestyle_screen.dart';
 import 'package:frontend/features/journal/presentation/screens/journal_screen.dart';
 import 'package:frontend/features/onboarding/presentation/screens/onboarding_screen.dart';
 
@@ -288,6 +289,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/assistance',
         builder: (context, state) => const AssistanceScreen(),
+      ),
+      GoRoute(
+        path: '/lifestyle',
+        builder: (context, state) => const LifestyleScreen(),
       ),
     ],
   );

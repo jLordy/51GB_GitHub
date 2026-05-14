@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 //  Role / avatar style enum
 // ─────────────────────────────────────────────────────────────────────────────
 
-enum JerseyType { center, warriors, magic }
+enum JerseyType { center, warriors, magic, peer }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Gradient lines connecting "Me" to each care-team node
@@ -121,6 +121,8 @@ class SilhouettePainter extends CustomPainter {
         return [const Color(0xFFA78BFA), const Color(0xFF7C3AED)];
       case JerseyType.magic:
         return [const Color(0xFF60A5FA), const Color(0xFF3B82F6)];
+      case JerseyType.peer:
+        return [const Color(0xFF2DD4BF), const Color(0xFF0D9488)];
     }
   }
 

@@ -130,14 +130,18 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
     final authUser = ref.watch(authStateProvider).asData?.value;
     final connectionsState = ref.watch(acceptedConnectionsProvider);
     final usersAsync = ref.watch(browseUsersProvider);
+    final patientPeersAsync = ref.watch(browsePatientsProvider);
     final myRole = ref.watch(currentUserProvider)?.role ?? '';
 
     final connections = connectionsState.asData?.value ?? <ConnectionModel>[];
     final users = usersAsync.asData?.value ?? <UserModel>[];
-    final userMap = <String, UserModel>{for (final u in users) u.uid: u};
+    final patientPeers = patientPeersAsync.asData?.value ?? <UserModel>[];
+    final userMap = <String, UserModel>{
+      for (final u in [...users, ...patientPeers]) u.uid: u,
+    };
     final currentUid = authUser?.uid ?? '';
 
-    // Collect ALL doctors and caregivers as CareTeamMember entries.
+    // Collect ALL doctors, caregivers, and peer patients as CareTeamMember entries.
     final List<CareTeamMember> careTeam = <CareTeamMember>[];
     for (final conn in connections) {
       final otherUid = conn.otherUid(currentUid);
@@ -157,6 +161,15 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
             displayName: user.displayName ?? 'Caregiver',
             connectionId: conn.connectionId,
             isDoctor: false,
+          ),
+        );
+      } else if (user.role == 'patient') {
+        careTeam.add(
+          CareTeamMember(
+            displayName: user.displayName ?? 'Patient',
+            connectionId: conn.connectionId,
+            isDoctor: false,
+            isPatient: true,
           ),
         );
       }
@@ -328,10 +341,14 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
                           key: ValueKey(_selectedConnId),
                           connectionType: selectedMember.isDoctor
                               ? ConnectionType.doctor
+                              : selectedMember.isPatient
+                              ? ConnectionType.patient
                               : ConnectionType.caregiver,
                           displayName: selectedMember.displayName,
                           roleLabel: selectedMember.isDoctor
                               ? 'Physician'
+                              : selectedMember.isPatient
+                              ? 'Peer Patient'
                               : 'Family Caregiver',
                           connectionId: selectedMember.connectionId,
                           onRemove: () {
@@ -368,7 +385,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
                 const SizedBox(height: 12),
                 BottomNavbar(
                   selectedIndex: -1,
-                  onHomeTap: () => context.go('/community'),
+                  onHomeTap: () => context.go('/home'),
                   onJournalTap: () => context.go('/journal'),
                   onNotificationsTap: () => context.go('/notifications'),
                 ),

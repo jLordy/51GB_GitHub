@@ -20,7 +20,7 @@ class ConnectionTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Row(
         children: [
-          _NavButton(onTap: () => context.go('/community')),
+          _NavButton(onTap: () => context.go('/home')),
           const Spacer(),
           Column(
             mainAxisSize: MainAxisSize.min,
