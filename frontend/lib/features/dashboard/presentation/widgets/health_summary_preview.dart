@@ -1,23 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/glassmorphic_container.dart';
+import 'package:frontend/features/journal/controller/journal_controller.dart';
+import 'package:frontend/features/journal/model/journal_entry_model.dart';
 import 'package:frontend/theme/palette.dart';
 
-/// Sparkline chart of the patient's recent health log trend.
-///
-/// [_data] is normalised 0.0–1.0 (higher = better self-reported health).
-/// In production, derive from journal entry mood/vitals scores via a
-/// JournalProvider and normalise server-side before passing here.
-class HealthSummaryPreview extends StatelessWidget {
+class HealthSummaryPreview extends ConsumerWidget {
   const HealthSummaryPreview({super.key});
 
-  static const List<double> _data = [
-    0.40, 0.58, 0.50, 0.72, 0.65, 0.80, 0.70, 0.83, 0.74, 0.90,
-  ];
+  // ── Score derivation ─────────────────────────────────────────────────────────
+
+  /// Normalises a single entry to 0.0–1.0 from universal daily questions.
+  /// overall_condition is the primary signal; energy_level is a ±0.1 nudge.
+  static double _entryScore(JournalEntryModel e) {
+    const condScore = {'better': 0.88, 'same': 0.55, 'worse': 0.18};
+    const energyDelta = {'high': 0.10, 'moderate': 0.0, 'low': -0.10};
+    final base = condScore[e.answers['overall_condition']] ?? 0.55;
+    final delta = energyDelta[e.answers['energy_level']] ?? 0.0;
+    return (base + delta).clamp(0.0, 1.0);
+  }
+
+  static String _moodValue(List<JournalEntryModel> entries) {
+    if (entries.isEmpty) return '--';
+    final avg =
+        entries.map(_entryScore).reduce((a, b) => a + b) / entries.length;
+    return '${(avg * 10).toStringAsFixed(1)}/10';
+  }
+
+  /// Returns average "sys/dia" from all entries that have a blood_pressure answer.
+  /// Returns '--/--' when none exist.
+  static String _bpValue(List<JournalEntryModel> entries) {
+    final readings = entries
+        .map((e) => e.answers['blood_pressure'])
+        .whereType<Map<String, dynamic>>()
+        .where((m) => m['systolic'] != null && m['diastolic'] != null)
+        .toList();
+    if (readings.isEmpty) return '--/--';
+    final sys = readings
+            .map((m) => (m['systolic'] as num).toDouble())
+            .reduce((a, b) => a + b) /
+        readings.length;
+    final dia = readings
+            .map((m) => (m['diastolic'] as num).toDouble())
+            .reduce((a, b) => a + b) /
+        readings.length;
+    return '${sys.toInt()}/${dia.toInt()}';
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+
+    final entriesAsync = ref.watch(journalEntriesProvider);
+
+    // Use null while loading; empty list on error so the UI stays functional.
+    final entries = entriesAsync.asData?.value;
+    final isLoading = entriesAsync is AsyncLoading;
+
+    // Sparkline: last 10 entries newest-first → reverse to chronological.
+    final last10 =
+        entries == null ? <JournalEntryModel>[] : entries.take(10).toList().reversed.toList();
+    final sparkData = last10.map(_entryScore).toList();
+
+    final moodStr = isLoading ? '…' : _moodValue(entries ?? []);
+    final bpStr = isLoading ? '…' : _bpValue(entries ?? []);
+    final logStr = isLoading ? '…' : (entries?.length.toString() ?? '--');
+    final rangeLabel = last10.isEmpty ? 'No entries yet' : 'Last ${last10.length} entries';
 
     return GlassmorphicContainer(
       child: Column(
@@ -32,35 +81,35 @@ class HealthSummaryPreview extends StatelessWidget {
                 style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
               ),
               Text(
-                'Last 10 days',
+                rangeLabel,
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // ── Sparkline ────────────────────────────────────────────────────
+          // ── Sparkline or empty state ──────────────────────────────────
           SizedBox(
             height: 62,
             width: double.infinity,
-            child: CustomPaint(
-              painter: _SparklinePainter(
-                data: _data,
-                lineColor: Palette.greenColor,
-              ),
+            child: _SparklineBody(
+              isLoading: isLoading,
+              data: sparkData,
+              cs: cs,
+              tt: tt,
             ),
           ),
           const SizedBox(height: 14),
 
-          // ── Summary stat badges ──────────────────────────────────────────
+          // ── Summary stat badges ──────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-              _StatBadge(label: 'Mood', value: '7.2/10', cs: cs, tt: tt),
+              _StatBadge(label: 'Mood', value: moodStr, cs: cs, tt: tt),
               _Divider(),
-              _StatBadge(label: 'BP Avg', value: '118/76', cs: cs, tt: tt),
+              _StatBadge(label: 'BP Avg', value: bpStr, cs: cs, tt: tt),
               _Divider(),
-              _StatBadge(label: 'Log Days', value: '12', cs: cs, tt: tt),
+              _StatBadge(label: 'Log Entries', value: logStr, cs: cs, tt: tt),
             ],
           ),
         ],
@@ -69,7 +118,51 @@ class HealthSummaryPreview extends StatelessWidget {
   }
 }
 
-// ── Stat badge ───────────────────────────────────────────────────────────────
+// ── Sparkline body ────────────────────────────────────────────────────────────
+
+class _SparklineBody extends StatelessWidget {
+  const _SparklineBody({
+    required this.isLoading,
+    required this.data,
+    required this.cs,
+    required this.tt,
+  });
+
+  final bool isLoading;
+  final List<double> data;
+  final ColorScheme cs;
+  final TextTheme tt;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Palette.greenColor,
+          ),
+        ),
+      );
+    }
+    if (data.length < 2) {
+      return Center(
+        child: Text(
+          'Log your first journal entry to see your trend',
+          textAlign: TextAlign.center,
+          style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+      );
+    }
+    return CustomPaint(
+      painter: _SparklinePainter(data: data, lineColor: Palette.greenColor),
+    );
+  }
+}
+
+// ── Stat badge ────────────────────────────────────────────────────────────────
 
 class _StatBadge extends StatelessWidget {
   const _StatBadge({
@@ -118,7 +211,7 @@ class _Divider extends StatelessWidget {
   }
 }
 
-// ── Sparkline painter ────────────────────────────────────────────────────────
+// ── Sparkline painter ─────────────────────────────────────────────────────────
 
 class _SparklinePainter extends CustomPainter {
   const _SparklinePainter({required this.data, required this.lineColor});
@@ -131,7 +224,6 @@ class _SparklinePainter extends CustomPainter {
 
     final step = size.width / (data.length - 1);
 
-    // Gradient fill under the line
     final fillPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -165,7 +257,6 @@ class _SparklinePainter extends CustomPainter {
           ..moveTo(x, size.height)
           ..lineTo(x, y);
       } else {
-        // Bezier smoothing between points
         final prevX = (i - 1) * step;
         final prevY = size.height - data[i - 1] * size.height;
         final cpX = (prevX + x) / 2;
@@ -181,7 +272,7 @@ class _SparklinePainter extends CustomPainter {
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(path, linePaint);
 
-    // End-point dot only (avoids visual clutter on dense data)
+    // End-point dot
     final lastX = (data.length - 1) * step;
     final lastY = size.height - data.last * size.height;
     canvas.drawCircle(Offset(lastX, lastY), 4, dotPaint);

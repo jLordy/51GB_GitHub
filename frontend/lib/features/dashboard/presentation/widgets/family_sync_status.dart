@@ -104,7 +104,7 @@ class _ConnectedRow extends StatelessWidget {
       children: <Widget>[
         // Label
         Text(
-          'Family',
+          'Connections',
           style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(width: 12),

@@ -47,6 +47,8 @@ from src.routers.call import router as call_router
 from src.routers.chat import router as chat_router
 from src.routers.connections import router as connections_router
 from src.routers.files import router as files_router
+from src.routers.reminder import router as reminder_router
+from src.routers.notifications import router as notifications_router
 
 router = APIRouter(prefix="/api", tags=["api"])
 router.include_router(journal_router)
@@ -56,6 +58,8 @@ router.include_router(call_router)
 router.include_router(chat_router)
 router.include_router(connections_router)
 router.include_router(files_router)
+router.include_router(reminder_router)
+router.include_router(notifications_router)
 
 db = get_firestore_client()
 logger = logging.getLogger(__name__)

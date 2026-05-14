@@ -33,18 +33,6 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
       description: 'I am a licensed physician monitoring patients.',
       icon: Icons.medical_services_outlined,
     ),
-    _RoleOption(
-      value: 'caregiver',
-      label: 'Caregiver',
-      description: 'I assist and support a patient in their care.',
-      icon: Icons.favorite_border,
-    ),
-    _RoleOption(
-      value: 'secretary',
-      label: 'Secretary',
-      description: 'I manage appointments and administrative tasks.',
-      icon: Icons.assignment_outlined,
-    ),
   ];
 
   Future<void> _submit() async {

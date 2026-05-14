@@ -163,6 +163,7 @@ class ConversationTile extends StatelessWidget {
 
     final msg = conversation.lastMessage;
     if (msg == null || msg.isEmpty) return 'No messages yet';
+    if (msg.startsWith('enc:')) return '';
     return '$prefix: $msg';
   }
 
