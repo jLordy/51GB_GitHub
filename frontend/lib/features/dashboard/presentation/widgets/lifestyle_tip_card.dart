@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/glassmorphic_container.dart';
+import 'package:frontend/features/journal/controller/journal_controller.dart';
 import 'package:frontend/theme/palette.dart';
+import 'package:go_router/go_router.dart';
 
-// Maps primary illness_type to a (icon, title, body) tip tuple.
-// Extend this map as new illness types are added to the seed data.
 const _tipMap = <String, (IconData, String, String)>{
   'diabetes': (
     Icons.restaurant_outlined,
     'Low-GI Meal Tip',
-    'Choose brown rice over white rice today. Pair it with ampalaya (bitter melon) — a Filipino vegetable with natural blood-sugar benefits.',
+    'Choose brown rice over white rice today. Pair it with bitter melon — a vegetable with natural blood-sugar benefits.',
   ),
   'hypertension': (
     Icons.favorite_border,
     'Heart-Smart Tip',
-    'Try oatmeal with banana for breakfast. Reduce asin sa ulam and use sibuyas and bawang for flavour instead.',
+    'Try oatmeal with banana for breakfast. Reduce salt in your meals and use onion and garlic for flavour instead.',
   ),
   'heart_disease': (
     Icons.monitor_heart_outlined,
     'Cardiac Tip',
-    'A small serving of bangus (milkfish) provides omega-3 fats that support heart rhythm and reduce inflammation.',
+    'A small serving of milkfish provides omega-3 fats that support heart rhythm and reduce inflammation.',
   ),
   'ckd': (
     Icons.water_drop_outlined,
     'Kidney-Friendly Tip',
-    'Stick to boiled or steamed foods with low phosphorus. Kangkong and sayote are great low-potassium vegetable choices.',
+    'Stick to boiled or steamed foods with low phosphorus. Water spinach and chayote are great low-potassium vegetable choices.',
   ),
   'asthma': (
     Icons.air_outlined,
@@ -39,7 +39,12 @@ const _tipMap = <String, (IconData, String, String)>{
   'cancer': (
     Icons.spa_outlined,
     'Nourishment Tip',
-    'Small, frequent meals help maintain energy levels. Include soft, easy-to-digest foods like lugaw or arroz caldo.',
+    'Small, frequent meals help maintain energy levels. Include soft, easy-to-digest foods like rice porridge or broth-based soups.',
+  ),
+  'oncology': (
+    Icons.spa_outlined,
+    'Nourishment Tip',
+    'Small, frequent meals help maintain energy levels. Include soft, easy-to-digest foods like rice porridge or broth-based soups.',
   ),
   'stroke': (
     Icons.directions_walk_outlined,
@@ -61,13 +66,9 @@ const _tipMap = <String, (IconData, String, String)>{
 const _defaultTip = (
   Icons.eco_outlined,
   'Daily Wellness',
-  'Drink at least 8 glasses of water today. A balanced Filipino meal of rice, protein, and vegetables keeps energy stable.',
+  'Drink at least 8 glasses of water today. A balanced meal of rice, lean protein, and vegetables keeps energy stable.',
 );
 
-/// Displays a contextual daily tip based on the patient's illness type.
-///
-/// In production, replace the hardcoded illness lookup with a watch on a
-/// patientProfileProvider that exposes `List<String> illnessTypes`.
 class LifestyleTipCard extends ConsumerWidget {
   const LifestyleTipCard({super.key});
 
@@ -76,47 +77,68 @@ class LifestyleTipCard extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    // TODO: replace with ref.watch(patientProfileProvider).illnessTypes.first
-    // For now derives from currentUserProvider once illness_type is surfaced there.
-    const String illnessType = 'diabetes';
-    final (icon, title, body) = _tipMap[illnessType] ?? _defaultTip;
+    // Derive illness type from the most recent journal entry.
+    final entries = ref.watch(journalEntriesProvider).asData?.value ?? [];
+    final illnessType = entries.isEmpty
+        ? ''
+        : entries
+            .firstWhere(
+              (e) => e.illnessType.isNotEmpty,
+              orElse: () => entries.first,
+            )
+            .illnessType;
 
-    return GlassmorphicContainer(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          // Tip category icon
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: Palette.greenColor.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(13),
+    final (icon, title, body) = _tipMap[illnessType.toLowerCase()] ?? _defaultTip;
+
+    return GestureDetector(
+      onTap: () => context.go('/lifestyle'),
+      child: GlassmorphicContainer(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Palette.greenColor.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: Palette.greenColor, size: 22),
             ),
-            child: Icon(icon, color: Palette.greenColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  body,
-                  style: tt.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    height: 1.55,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: tt.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 12,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  Text(
+                    body,
+                    style: tt.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      height: 1.55,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

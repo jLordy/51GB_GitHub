@@ -13,11 +13,13 @@ class CareTeamMember {
   final String displayName;
   final String connectionId;
   final bool isDoctor;
+  final bool isPatient;
 
   const CareTeamMember({
     required this.displayName,
     required this.connectionId,
     required this.isDoctor,
+    this.isPatient = false,
   });
 }
 
@@ -116,7 +118,7 @@ class HealthCircleView extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tap + to connect with a doctor\nor family caregiver',
+                      'Tap + to connect with a doctor\nor fellow patient',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 12,
@@ -325,6 +327,8 @@ class HealthCircleView extends StatelessWidget {
                       label: members[i].displayName,
                       jerseyType: members[i].isDoctor
                           ? JerseyType.magic
+                          : members[i].isPatient
+                          ? JerseyType.peer
                           : JerseyType.warriors,
                       showMessage: false,
                       showPhone: false,
@@ -506,17 +510,23 @@ class PersonNode extends StatelessWidget {
     this.onPhoneTap,
   });
 
-  Color get _roleColor => jerseyType == JerseyType.magic
-      ? const Color(0xFF3B82F6)
-      : const Color(0xFF7C3AED);
+  Color get _roleColor => switch (jerseyType) {
+    JerseyType.magic => const Color(0xFF3B82F6),
+    JerseyType.peer  => const Color(0xFF0D9488),
+    _                => const Color(0xFF7C3AED),
+  };
 
-  List<Color> get _gradientColors => jerseyType == JerseyType.magic
-      ? [const Color(0xFF60A5FA), const Color(0xFF3B82F6)]
-      : [const Color(0xFFA78BFA), const Color(0xFF7C3AED)];
+  List<Color> get _gradientColors => switch (jerseyType) {
+    JerseyType.magic => [const Color(0xFF60A5FA), const Color(0xFF3B82F6)],
+    JerseyType.peer  => [const Color(0xFF2DD4BF), const Color(0xFF0D9488)],
+    _                => [const Color(0xFFA78BFA), const Color(0xFF7C3AED)],
+  };
 
-  IconData get _roleIcon => jerseyType == JerseyType.magic
-      ? Icons.medical_services_rounded
-      : Icons.favorite_rounded;
+  IconData get _roleIcon => switch (jerseyType) {
+    JerseyType.magic => Icons.medical_services_rounded,
+    JerseyType.peer  => Icons.people_rounded,
+    _                => Icons.favorite_rounded,
+  };
 
   String get _firstName => label.split(' ').first;
 

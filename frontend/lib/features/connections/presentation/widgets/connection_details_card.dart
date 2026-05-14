@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Determines which care-team member's info is displayed in the details card.
-enum ConnectionType { doctor, caregiver }
+enum ConnectionType { doctor, caregiver, patient }
 
 class ConnectionDetailsCard extends StatelessWidget {
   final ConnectionType connectionType;
@@ -31,20 +31,29 @@ class ConnectionDetailsCard extends StatelessWidget {
     this.thirdButtonLabel,
   });
 
-  bool get _isDoctor => connectionType == ConnectionType.doctor;
+  Color get _accentColor => switch (connectionType) {
+    ConnectionType.doctor  => const Color(0xFF3B82F6),
+    ConnectionType.patient => const Color(0xFF0D9488),
+    _                      => const Color(0xFF7C3AED),
+  };
 
-  Color get _accentColor =>
-      _isDoctor ? const Color(0xFF3B82F6) : const Color(0xFF7C3AED);
+  List<Color> get _gradientColors => switch (connectionType) {
+    ConnectionType.doctor  => [const Color(0xFF60A5FA), const Color(0xFF3B82F6)],
+    ConnectionType.patient => [const Color(0xFF2DD4BF), const Color(0xFF0D9488)],
+    _                      => [const Color(0xFFA78BFA), const Color(0xFF7C3AED)],
+  };
 
-  List<Color> get _gradientColors => _isDoctor
-      ? [const Color(0xFF60A5FA), const Color(0xFF3B82F6)]
-      : [const Color(0xFFA78BFA), const Color(0xFF7C3AED)];
+  IconData get _roleIcon => switch (connectionType) {
+    ConnectionType.doctor  => Icons.medical_services_rounded,
+    ConnectionType.patient => Icons.people_rounded,
+    _                      => Icons.favorite_rounded,
+  };
 
-  IconData get _roleIcon =>
-      _isDoctor ? Icons.medical_services_rounded : Icons.favorite_rounded;
-
-  String get _roleShortLabel =>
-      _isDoctor ? 'Primary Physician' : 'Family Caregiver';
+  String get _roleShortLabel => switch (connectionType) {
+    ConnectionType.doctor  => 'Primary Physician',
+    ConnectionType.patient => 'Peer Patient',
+    _                      => 'Family Caregiver',
+  };
 
   void _showFullBio(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -106,9 +115,11 @@ class ConnectionDetailsCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              _isDoctor
-                  ? 'A dedicated physician committed to your care and well-being. Always available to support your health journey and ensure the best outcomes.'
-                  : 'Your family caregiver who supports your daily health needs and ensures your well-being at all times.',
+              switch (connectionType) {
+                ConnectionType.doctor  => 'A dedicated physician committed to your care and well-being. Always available to support your health journey and ensure the best outcomes.',
+                ConnectionType.patient => 'A fellow patient in your health circle. Share experiences, offer support, and stay connected on your journey to wellness.',
+                _                      => 'Your family caregiver who supports your daily health needs and ensures your well-being at all times.',
+              },
               style: GoogleFonts.inter(
                 fontSize: 14,
                 color: textMid,
@@ -340,9 +351,11 @@ class ConnectionDetailsCard extends StatelessWidget {
                 ),
                 children: [
                   TextSpan(
-                    text: _isDoctor
-                        ? 'A dedicated physician committed to your care and well-being...'
-                        : 'Your family caregiver who supports your daily health needs...',
+                    text: switch (connectionType) {
+                      ConnectionType.doctor  => 'A dedicated physician committed to your care and well-being...',
+                      ConnectionType.patient => 'A fellow patient in your health circle. Share experiences and support...',
+                      _                      => 'Your family caregiver who supports your daily health needs...',
+                    },
                   ),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
@@ -386,12 +399,16 @@ class ConnectionDetailsCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _CardAction(
-                  icon:
-                      thirdButtonIcon ??
-                      (_isDoctor
-                          ? Icons.calendar_month_rounded
-                          : Icons.checklist_rounded),
-                  label: thirdButtonLabel ?? (_isDoctor ? 'Schedule' : 'Tasks'),
+                  icon: thirdButtonIcon ?? switch (connectionType) {
+                    ConnectionType.doctor  => Icons.calendar_month_rounded,
+                    ConnectionType.patient => Icons.chat_bubble_outline_rounded,
+                    _                      => Icons.checklist_rounded,
+                  },
+                  label: thirdButtonLabel ?? switch (connectionType) {
+                    ConnectionType.doctor  => 'Schedule',
+                    ConnectionType.patient => 'Connect',
+                    _                      => 'Tasks',
+                  },
                   bg: isDark
                       ? Palette.darkInputSurfaceColor
                       : const Color(0xFFF3F4F6),
