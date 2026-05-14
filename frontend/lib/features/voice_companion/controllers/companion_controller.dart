@@ -80,7 +80,10 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
     // Runs in the background; greeting always uses the local fallback for speed.
     _repo.checkHealth().then((ok) {
       _useApi = ok;
-      debugPrint('[COMPANION] AI backend ${ok ? "available ✓" : "unavailable — using local fallback"}');
+      debugPrint(
+        '[COMPANION] session: health_done use_api=$_useApi '
+        '(Ollama path ${_useApi ? "enabled" : "disabled — local fallback"})',
+      );
     });
 
     // Opening greeting is always local — no API call, avoids latency before user says anything.
@@ -251,15 +254,34 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
   /// Tries the backend API first; silently falls back to [generateResponse]
   /// if the API is unavailable or returns null.
   Future<String> generateResponseAsync(String input) async {
+    debugPrint(
+      '[COMPANION] generateResponseAsync: use_api=$_useApi input_len=${input.length}',
+    );
     if (_useApi) {
       try {
         final reply = await _repo.getAiReply(input);
-        if (reply != null && reply.isNotEmpty) return reply;
+        if (reply != null && reply.isNotEmpty) {
+          debugPrint(
+            '[COMPANION] generateResponseAsync: source=api reply_len=${reply.length}',
+          );
+          return reply;
+        }
+        debugPrint(
+          '[COMPANION] generateResponseAsync: api returned null/empty → fallback',
+        );
       } catch (e) {
         debugPrint('[COMPANION] generateResponseAsync error: $e');
       }
+    } else {
+      debugPrint(
+        '[COMPANION] generateResponseAsync: skipping api (use_api=false) → fallback',
+      );
     }
-    return generateResponse(input);
+    final local = generateResponse(input);
+    debugPrint(
+      '[COMPANION] generateResponseAsync: source=local reply_len=${local.length}',
+    );
+    return local;
   }
 
   // ── Local fallback AI response ─────────────────────────────────────────────

@@ -41,15 +41,20 @@ async def chat_with_companion(
     payload: CompanionRequest,
     current_user: CurrentUser = Depends(require_roles("patient")),
 ) -> CompanionResponse:
+    prev = (payload.message[:80] + "…") if len(payload.message) > 80 else payload.message
+    print(f"[COMPANION] POST /api/companion uid={current_user.uid} msg_preview={prev!r}")
     try:
         reply = await get_companion_reply(
             message=payload.message,
             user_uid=current_user.uid,
             db=db,
         )
+        rprev = (reply[:120] + "…") if len(reply) > 120 else reply
+        print(f"[COMPANION] POST /api/companion HTTP_200 reply_len={len(reply)} preview={rprev!r}")
         return CompanionResponse(reply=reply)
     except RuntimeError as exc:
         # Already logged inside companion_service with full details.
+        print(f"[COMPANION] POST /api/companion HTTP_503 err={exc!r}")
         logger.warning("[COMPANION] Returning 503 to client: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -68,8 +73,11 @@ async def chat_with_companion(
     ),
 )
 async def companion_health() -> CompanionHealthResponse:
-    if await check_ollama_health():
+    ok = await check_ollama_health()
+    if ok:
+        print("[COMPANION] GET /api/companion/health HTTP_200 status=ok")
         return CompanionHealthResponse(status="ok")
+    print("[COMPANION] GET /api/companion/health HTTP_503 status=unavailable")
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="AI service unavailable",

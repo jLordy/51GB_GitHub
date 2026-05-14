@@ -73,11 +73,16 @@ def _fetch_latest_journal_entry(user_uid: str, db: Any) -> dict | None:
             .stream()
         )
         if not docs:
+            print(f"[COMPANION] journal_fetch: no entry for uid={user_uid[:8]}…")
             return None
         data: dict = docs[0].to_dict() or {}
+        ans = data.get("answers") or {}
+        n = len(ans) if isinstance(ans, dict) else 0
+        print(f"[COMPANION] journal_fetch: OK uid={user_uid[:8]}… n_answers={n}")
         return data
     except Exception as exc:
         logger.warning("[COMPANION] Failed to fetch journal entry for uid=%s: %s", user_uid, exc)
+        print(f"[COMPANION] journal_fetch: ERROR uid={user_uid[:8]}… err={exc!r}")
         return None
 
 
@@ -102,6 +107,7 @@ def _build_system_prompt(user_uid: str, db: Any) -> str:
     """
     entry = _fetch_latest_journal_entry(user_uid, db)
     if not entry:
+        print("[COMPANION] prompt_context: journal=NONE (base system prompt only)")
         return _BASE_SYSTEM_PROMPT
 
     answers: dict = entry.get("answers", {})
@@ -123,6 +129,12 @@ def _build_system_prompt(user_uid: str, db: Any) -> str:
     context_parts.append(f"Answers: {_format_answers(answers)}")
 
     journal_context = "\n".join(context_parts)
+    preview = _format_answers(answers)[:240]
+    print(
+        "[COMPANION] prompt_context: journal=OK "
+        f"submitted={date_str!r} illness={illness_type!r} "
+        f"n_answers={len(answers)} preview={preview!r}…"
+    )
 
     return (
         f"{_BASE_SYSTEM_PROMPT}\n\n"
@@ -147,6 +159,12 @@ async def get_companion_reply(message: str, user_uid: str, db: Any) -> str:
     All errors are printed to the terminal for developer visibility.
     """
     system_prompt = _build_system_prompt(user_uid, db)
+    msg_preview = (message[:100] + "…") if len(message) > 100 else message
+    print(
+        f"[COMPANION] ollama_call: start model={_OLLAMA_MODEL!r} "
+        f"url={_OLLAMA_URL!r} msg_preview={msg_preview!r} "
+        f"system_len={len(system_prompt)}"
+    )
 
     payload = {
         "model": _OLLAMA_MODEL,
@@ -185,6 +203,8 @@ async def get_companion_reply(message: str, user_uid: str, db: Any) -> str:
         print(f"[COMPANION] Ollama returned empty response. Full payload: {data}")
         raise RuntimeError("Ollama returned an empty response")
 
+    rprev = (reply[:160] + "…") if len(reply) > 160 else reply
+    print(f"[COMPANION] ollama_call: success reply_len={len(reply)} preview={rprev!r}")
     return reply
 
 
@@ -200,7 +220,9 @@ async def check_ollama_health() -> bool:
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{_OLLAMA_URL}/api/tags")
-            return resp.status_code == 200
+            ok = resp.status_code == 200
+            print(f"[COMPANION] ollama_health: status=http_{resp.status_code} ok={ok}")
+            return ok
     except Exception as exc:
-        print(f"[COMPANION] Ollama health check failed: {exc}")
+        print(f"[COMPANION] ollama_health: FAIL err={exc!r}")
         return False
