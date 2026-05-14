@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:frontend/core/widgets/custom_snackbar.dart';
 import 'package:frontend/features/auth/controller/auth_provider.dart';
 import 'package:frontend/features/voice_companion/screens/companion_overlay.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +47,8 @@ class BottomNavbar extends ConsumerWidget {
   static int _patientIndex(String path) {
     if (path == '/home') return 0;
     if (path.startsWith('/journal') || path.startsWith('/monitoring')) return 1;
-    if (path.startsWith('/notifications')) return 2;
+    if (path.startsWith('/reminder')) return 2;
+    if (path.startsWith('/assistance')) return 3;
     return -1;
   }
 
@@ -72,7 +72,7 @@ class BottomNavbar extends ConsumerWidget {
     if (path == '/home') return 0;
     if (path.startsWith('/patients')) return 1;
     if (path.startsWith('/notifications')) return 2;
-    // index 3 = Assistance (no dedicated route)
+    if (path.startsWith('/assistance')) return 3;
     return -1;
   }
 
@@ -353,13 +353,13 @@ class _PatientItems extends StatelessWidget {
         ),
         const SizedBox(width: 58),
         _NavItem(
-          icon: Icons.notifications_none,
+          icon: Icons.medication_rounded,
           isSelected: activeIndex == 2,
           selectedColor: selectedColor,
           unselectedColor: unselectedColor,
           onTap: () {
             onNotificationsTap();
-            context.go('/notifications');
+            context.go('/reminder');
           },
         ),
         _NavItem(
@@ -369,11 +369,7 @@ class _PatientItems extends StatelessWidget {
           unselectedColor: unselectedColor,
           onTap: () {
             onAssistanceTap();
-            AppSnackBar.show(
-              context,
-              'This feature is coming soon!',
-              type: SnackBarType.info,
-            );
+            context.go('/assistance');
           },
         ),
       ],
@@ -536,13 +532,7 @@ class _CaregiverItems extends StatelessWidget {
           isSelected: activeIndex == 3,
           selectedColor: selectedColor,
           unselectedColor: unselectedColor,
-          onTap: () {
-            AppSnackBar.show(
-              context,
-              'This feature is coming soon!',
-              type: SnackBarType.info,
-            );
-          },
+          onTap: () => context.go('/assistance'),
         ),
       ],
     );

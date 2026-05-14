@@ -21,10 +21,10 @@ import 'package:frontend/features/file/presentation/screens/pdf_viewer_screen.da
 import 'package:frontend/features/journal/presentation/screens/monitoring_screen.dart';
 import 'package:frontend/features/report/presentation/screens/report_screen.dart';
 import 'package:frontend/features/chat/presentation/screens/chat_screen.dart';
+import 'package:frontend/features/reminder/presentation/screens/reminder_screen.dart';
 import 'package:frontend/features/chat/presentation/screens/conversations_screen.dart';
 import 'package:frontend/features/chat/model/conversation_model.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:frontend/features/auth/controller/auth_provider.dart';
 import 'package:frontend/features/auth/model/user_model.dart';
 import 'package:frontend/features/auth/presentation/screens/email_verification_screen.dart';
@@ -32,6 +32,7 @@ import 'package:frontend/features/auth/presentation/screens/forgot_password_scre
 import 'package:frontend/features/auth/presentation/screens/login_screen.dart';
 import 'package:frontend/features/auth/presentation/screens/register_screen.dart';
 import 'package:frontend/features/auth/presentation/screens/role_selection_screen.dart';
+import 'package:frontend/features/assistance/presentation/screens/assistance_screen.dart';
 import 'package:frontend/features/journal/presentation/screens/journal_screen.dart';
 import 'package:frontend/features/onboarding/presentation/screens/onboarding_screen.dart';
 
@@ -245,6 +246,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ConversationsScreen(),
       ),
       GoRoute(
+        path: '/reminder',
+        builder: (context, state) => const ReminderScreen(),
+      ),
+      GoRoute(
         path: '/chat/:conversationId',
         builder: (context, state) {
           final conv = state.extra as ConversationModel;
@@ -280,7 +285,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      
+      GoRoute(
+        path: '/assistance',
+        builder: (context, state) => const AssistanceScreen(),
+      ),
     ],
   );
 });

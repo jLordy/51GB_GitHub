@@ -145,21 +145,6 @@ class _LeftSidebarState extends ConsumerState<LeftSidebar> {
                               ),
                             ),
                           const SizedBox(height: 8),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              context.go('/profile');
-                            },
-                            child: Text(
-                              'View profile',
-                              style: TextStyle(
-                                color: scheme.primary,
-                                decoration: TextDecoration.underline,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
