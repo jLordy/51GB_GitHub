@@ -20,6 +20,9 @@ import 'package:frontend/features/file/presentation/screens/folder_documents_scr
 import 'package:frontend/features/file/presentation/screens/pdf_viewer_screen.dart';
 import 'package:frontend/features/journal/presentation/screens/monitoring_screen.dart';
 import 'package:frontend/features/report/presentation/screens/report_screen.dart';
+import 'package:frontend/features/chat/presentation/screens/chat_screen.dart';
+import 'package:frontend/features/chat/presentation/screens/conversations_screen.dart';
+import 'package:frontend/features/chat/model/conversation_model.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:frontend/features/auth/controller/auth_provider.dart';
@@ -236,6 +239,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/report',
         builder: (context, state) => const ReportScreen(),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) => const ConversationsScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:conversationId',
+        builder: (context, state) {
+          final conv = state.extra as ConversationModel;
+          return ChatScreen(conversation: conv);
+        },
       ),
       GoRoute(
         path: '/documents',

@@ -74,7 +74,6 @@ class _CompanionOverlayShellState
   }
 
   void _close() {
-    ref.read(companionControllerProvider.notifier).dispose();
     Navigator.of(context, rootNavigator: true).pop();
   }
 
