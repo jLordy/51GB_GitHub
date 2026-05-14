@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../data/companion_repository.dart';
 import '../models/companion_state.dart';
 import '../models/message_model.dart';
 import '../services/speech_service.dart';
@@ -51,7 +53,7 @@ class CompanionControllerState {
 
 final companionControllerProvider =
     StateNotifierProvider.autoDispose<CompanionController, CompanionControllerState>(
-  (ref) => CompanionController(),
+  (ref) => CompanionController(ref.read(companionRepositoryProvider)),
 );
 
 // ---------------------------------------------------------------------------
@@ -59,11 +61,13 @@ final companionControllerProvider =
 // ---------------------------------------------------------------------------
 
 class CompanionController extends StateNotifier<CompanionControllerState> {
-  CompanionController() : super(const CompanionControllerState());
+  CompanionController(this._repo) : super(const CompanionControllerState());
 
+  final CompanionRepository _repo;
   final SpeechService _speech = SpeechService();
   final TtsService _tts = TtsService();
   bool _disposed = false;
+  bool _useApi = false;
   int _messageCounter = 0;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -71,6 +75,15 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
   Future<void> initialize() async {
     await _tts.init();
     await _speech.init();
+
+    // Health check — if Ollama is reachable, use real AI for this session.
+    // Runs in the background; greeting always uses the local fallback for speed.
+    _repo.checkHealth().then((ok) {
+      _useApi = ok;
+      debugPrint('[COMPANION] AI backend ${ok ? "available ✓" : "unavailable — using local fallback"}');
+    });
+
+    // Opening greeting is always local — no API call, avoids latency before user says anything.
     _speak(generateResponse(''));
   }
 
@@ -143,9 +156,11 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
       liveTranscript: '',
     );
 
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 3), () async {
       if (_disposed) return;
-      _speak(generateResponse(transcript));
+      final reply = await generateResponseAsync(transcript);
+      if (_disposed) return;
+      _speak(reply);
     });
   }
 
@@ -176,9 +191,10 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
       isTyping: true,
     );
 
-    Future.delayed(const Duration(milliseconds: 1200), () {
+    Future.delayed(const Duration(milliseconds: 1200), () async {
       if (_disposed) return;
-      final response = generateResponse(trimmed);
+      final response = await generateResponseAsync(trimmed);
+      if (_disposed) return;
       final aiMessage = VoiceMessage(
         id: 'msg_${_messageCounter++}',
         text: response,
@@ -230,13 +246,26 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
     }
   }
 
-  // ── Fake AI response ───────────────────────────────────────────────────────
+  // ── Async AI response (real API with local fallback) ───────────────────────
+
+  /// Tries the backend API first; silently falls back to [generateResponse]
+  /// if the API is unavailable or returns null.
+  Future<String> generateResponseAsync(String input) async {
+    if (_useApi) {
+      try {
+        final reply = await _repo.getAiReply(input);
+        if (reply != null && reply.isNotEmpty) return reply;
+      } catch (e) {
+        debugPrint('[COMPANION] generateResponseAsync error: $e');
+      }
+    }
+    return generateResponse(input);
+  }
+
+  // ── Local fallback AI response ─────────────────────────────────────────────
   //
-  // Contract (Phase 2 swap):
-  //   Input:  user utterance — empty string triggers greeting
-  //   Output: Taglish response, max 2 sentences
-  //   To upgrade: replace only this method body with an Ollama HTTP call.
-  //   Signature must remain: String generateResponse(String input)
+  // Used when: backend unreachable, Ollama down, or _useApi == false.
+  // Greeting (empty input) always goes here even when API is available.
 
   String generateResponse(String input) {
     if (input.trim().isEmpty) {
@@ -263,7 +292,7 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
     if (_containsAny(lower, ['sakit', 'masakit', 'hurt', 'pain', 'sick', 'may sakit'])) {
       return 'Naiintindihan kita. Importante na mag-ingat sa kalusugan mo. Okay ka ba?';
     }
-    if (_containsAny(lower, ['stress', 'stressed', 'overwhelmed', 'pressure', 'pressure'])) {
+    if (_containsAny(lower, ['stress', 'stressed', 'overwhelmed', 'pressure'])) {
       return 'Pag sobra na ang stress, okay lang mag-pahinga sandali. Nandito lang ako.';
     }
     if (_containsAny(lower, ['love', 'mahal', 'miss', 'nami-miss'])) {
@@ -305,7 +334,6 @@ class CompanionController extends StateNotifier<CompanionControllerState> {
       return 'Naiintindihan kita. Kung kaya, subukan mong bawasan — malaking bagay yan para sa iyong kalusugan.';
     }
 
-    // Temporary universal acknowledgement until backend API replaces this.
     return 'Naiintindihan kita! Okay ka lang ba?';
   }
 
