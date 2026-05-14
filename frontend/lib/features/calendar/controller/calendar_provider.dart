@@ -154,6 +154,33 @@ final patientAppointmentsBySelectedDateProvider =
           .fetchPatientAppointmentsByDate(date: selected);
     });
 
+/// Fetches the next upcoming appointment for the current patient this month.
+final nextPatientAppointmentProvider =
+    FutureProvider.autoDispose<AppointmentModel?>((ref) async {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, 1);
+      final end = DateTime(now.year, now.month + 1, 0);
+
+      final appointments = await ref
+          .read(calendarRepositoryProvider)
+          .fetchPatientAppointmentsByRange(start: start, end: end);
+
+      // Find the first appointment that is today or later
+      try {
+        return appointments.firstWhere(
+          (apt) =>
+              apt.appointmentDate.isAfter(
+                DateTime(now.year, now.month, now.day),
+              ) ||
+              (apt.appointmentDate.year == now.year &&
+                  apt.appointmentDate.month == now.month &&
+                  apt.appointmentDate.day == now.day),
+        );
+      } catch (e) {
+        return null;
+      }
+    });
+
 final connectedCalendarPatientsProvider = FutureProvider<List<UserModel>>((
   ref,
 ) async {

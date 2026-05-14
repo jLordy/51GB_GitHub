@@ -5,6 +5,9 @@ import 'package:frontend/features/auth/data/register_request.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:frontend/features/connections/controller/connection_controller.dart';
+import 'package:frontend/features/file/controller/file_controller.dart';
+import 'package:frontend/features/journal/controller/journal_controller.dart';
 
 // 1. The Provider Definition
 final authControllerProvider =
@@ -84,6 +87,18 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       await _authRepository.signOut();
       _ref.read(currentUserProvider.notifier).state = null;
       _ref.invalidate(usersListProvider);
+      _ref.invalidate(fileFoldersProvider);
+      _ref.invalidate(folderDocumentsProvider);
+      _ref.invalidate(storageSummaryProvider);
+      _ref.invalidate(patientFileFoldersProvider);
+      _ref.invalidate(patientFolderDocumentsProvider);
+      _ref.invalidate(patientStorageSummaryProvider);
+      _ref.invalidate(acceptedConnectionsProvider);
+      _ref.invalidate(pendingConnectionsProvider);
+      _ref.invalidate(patientProfilesProvider);
+      _ref.invalidate(patientJournalEntriesProvider);
+      _ref.invalidate(journalEntriesProvider);
+      _ref.invalidate(journalQuestionsProvider);
     });
   }
 
@@ -97,6 +112,18 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       await _authRepository.deleteCurrentUser();
       _ref.read(currentUserProvider.notifier).state = null;
       _ref.invalidate(usersListProvider);
+      _ref.invalidate(fileFoldersProvider);
+      _ref.invalidate(folderDocumentsProvider);
+      _ref.invalidate(storageSummaryProvider);
+      _ref.invalidate(patientFileFoldersProvider);
+      _ref.invalidate(patientFolderDocumentsProvider);
+      _ref.invalidate(patientStorageSummaryProvider);
+      _ref.invalidate(acceptedConnectionsProvider);
+      _ref.invalidate(pendingConnectionsProvider);
+      _ref.invalidate(patientProfilesProvider);
+      _ref.invalidate(patientJournalEntriesProvider);
+      _ref.invalidate(journalEntriesProvider);
+      _ref.invalidate(journalQuestionsProvider);
     });
   }
 }
