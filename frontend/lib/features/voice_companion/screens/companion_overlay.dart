@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../controllers/companion_controller.dart';
+import '../data/companion_repository.dart';
 import 'chat_screen.dart';
 import 'voice_screen.dart';
 
@@ -44,7 +45,7 @@ class _CompanionOverlayRoot extends StatelessWidget {
     return ProviderScope(
       overrides: [
         companionControllerProvider.overrideWith(
-          (ref) => CompanionController(),
+          (ref) => CompanionController(ref.read(companionRepositoryProvider)),
         ),
       ],
       child: const _CompanionOverlayShell(),
