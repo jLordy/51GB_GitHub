@@ -679,6 +679,45 @@ def list_users(
     return list_all_users()
 
 
+@router.get("/users/browse")
+def browse_doctors_and_caregivers(
+    _: CurrentUser = Depends(get_current_user),
+) -> list[dict]:
+    """Returns all active doctors and caregivers for the connection picker."""
+    results = []
+    for doc in db.collection("users").stream():
+        data = doc.to_dict() or {}
+        if (data.get("role") or "").lower() in ("doctor", "caregiver") and (data.get("status") or "").lower() == "active":
+            results.append(data)
+    return results
+
+
+@router.get("/users/browse-patients")
+def browse_patients(
+    _: CurrentUser = Depends(get_current_user),
+) -> list[dict]:
+    """Returns all active patients for doctor/caregiver connection views."""
+    results = []
+    for doc in db.collection("users").stream():
+        data = doc.to_dict() or {}
+        if (data.get("role") or "").lower() == "patient" and (data.get("status") or "").lower() == "active":
+            results.append(data)
+    return results
+
+
+@router.get("/users/browse-secretaries")
+def browse_secretaries(
+    _: CurrentUser = Depends(get_current_user),
+) -> list[dict]:
+    """Returns all active secretaries."""
+    results = []
+    for doc in db.collection("users").stream():
+        data = doc.to_dict() or {}
+        if (data.get("role") or "").lower() == "secretary" and (data.get("status") or "").lower() == "active":
+            results.append(data)
+    return results
+
+
 @router.patch("/users/{uid}/status", status_code=status.HTTP_200_OK)
 def set_user_status(
     uid: str,

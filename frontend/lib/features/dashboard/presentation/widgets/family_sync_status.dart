@@ -150,21 +150,21 @@ class _ConnectedRow extends StatelessWidget {
 
         const Spacer(),
 
-        // Live sync indicator
-        Container(
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Palette.greenColor,
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          'Synced',
-          style: tt.labelSmall?.copyWith(
-            color: Palette.greenColor,
-            fontWeight: FontWeight.w600,
+        GestureDetector(
+          onTap: () => context.go('/connections'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Palette.greenColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'View',
+              style: tt.labelSmall?.copyWith(
+                color: Palette.greenColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ],

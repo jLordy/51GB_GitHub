@@ -1,1 +1,27 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"agapay-hackathon","appId":"1:546603438794:android:c0d681334a4e0425ca9a33","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"agapay-hackathon","configurations":{"android":"1:546603438794:android:c0d681334a4e0425ca9a33","ios":"1:546603438794:ios:f3c5ec1b95b388ddca9a33","web":"1:546603438794:web:ad998caf51551bb7ca9a33","windows":"1:546603438794:web:5bd41b73cd560ec2ca9a33"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "agapay-hackathon",
+          "appId": "1:546603438794:android:c0d681334a4e0425ca9a33",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "agapay-hackathon",
+          "configurations": {
+            "android": "1:546603438794:android:c0d681334a4e0425ca9a33",
+            "ios": "1:546603438794:ios:f3c5ec1b95b388ddca9a33",
+            "web": "1:546603438794:web:ad998caf51551bb7ca9a33",
+            "windows": "1:546603438794:web:5bd41b73cd560ec2ca9a33"
+          }
+        }
+      }
+    }
+  }
+}

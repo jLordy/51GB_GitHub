@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Conversations ───────────────────────────────────────────────────────
+    // Any authenticated participant may read the conversation document.
+    // Writes (unread counts, last_message) go through the backend Admin SDK —
+    // the client only needs read access.
+    match /conversations/{convId} {
+      allow read: if request.auth != null
+                  && request.auth.uid in resource.data.participants;
+
+      // Messages sub-collection: participants may read; only the sender may delete.
+      match /messages/{msgId} {
+        allow read: if request.auth != null
+                    && request.auth.uid in
+                       get(/databases/$(database)/documents/conversations/$(convId))
+                         .data.participants;
+
+        allow delete: if request.auth != null
+                      && resource.data.sender_uid == request.auth.uid;
+      }
+    }
+  }
+}

@@ -70,6 +70,20 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
     super.dispose();
   }
 
+  Future<void> _openChatWith(String otherUid) async {
+    try {
+      final repo = ref.read(chatRepositoryProvider);
+      final conv = await repo.createOrFetchConversation(otherUid);
+      if (!mounted) return;
+      context.push('/chat/${conv.conversationId}', extra: conv);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open conversation')),
+      );
+    }
+  }
+
   void _showAddConnectionSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
@@ -154,6 +168,17 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
       for (final m in careTeam) {
         if (m.connectionId == _selectedConnId) {
           selectedMember = m;
+          break;
+        }
+      }
+    }
+
+    // Resolve the other user's UID for the selected connection (used for chat).
+    String? selectedOtherUid;
+    if (selectedMember != null) {
+      for (final c in connections) {
+        if (c.connectionId == selectedMember.connectionId) {
+          selectedOtherUid = c.otherUid(currentUid);
           break;
         }
       }
@@ -315,7 +340,9 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
                                 .remove(selectedMember!.connectionId);
                             setState(() => _selectedConnId = null);
                           },
-                          onMessageTap: () {},
+                          onMessageTap: selectedOtherUid != null
+                              ? () => _openChatWith(selectedOtherUid!)
+                              : () {},
                           onCallTap: () {},
                           // Secretary: override 3rd button to show doctor's patients.
                           thirdButtonIcon:
@@ -547,7 +574,7 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen>
                 const SizedBox(height: 12),
                 BottomNavbar(
                   selectedIndex: -1,
-                  onHomeTap: () => context.go('/community'),
+                  onHomeTap: () => context.go('/home'),
                   onJournalTap: () => context.go('/journal'),
                   onNotificationsTap: () => context.go('/notifications'),
                 ),

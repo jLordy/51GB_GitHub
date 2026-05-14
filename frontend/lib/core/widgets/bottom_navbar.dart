@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:frontend/core/widgets/custom_snackbar.dart';
 import 'package:frontend/features/auth/controller/auth_provider.dart';
+import 'package:frontend/features/voice_companion/screens/companion_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -205,8 +206,7 @@ class BottomNavbar extends ConsumerWidget {
               top: 0,
               child: GestureDetector(
                 onTap: () {
-                  onCenterTap();
-                  context.go('/connections');
+                  showCompanionOverlay(context);
                 },
                 behavior: HitTestBehavior.opaque,
                 child: Container(
